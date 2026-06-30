@@ -31,7 +31,7 @@ const TYPE_CONFIG: Record<string, { icon: React.ComponentProps<typeof Feather>["
   effect:       { icon: "monitor",       color: "#9146ff" },
   sound:        { icon: "volume-2",      color: "#00bfff" },
   mod:          { icon: "shield-off",    color: "#eb4034" },
-  announcement: { icon: "megaphone",     color: "#9146ff" },
+  announcement: { icon: "speaker",       color: "#9146ff" },
   stream:       { icon: "tv",            color: "#9146ff" },
 };
 const FALLBACK_CONFIG = { icon: "activity" as const, color: "#9146ff" };

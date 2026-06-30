@@ -23,7 +23,7 @@ export const TWITCH_CLIENT_ID: string =
   process.env["TWITCH_CLIENT_ID"] ?? "ESCRIBE_AQUI_CLIENT_ID";
 
 export const TWITCH_CLIENT_SECRET: string =
-  process.env["TWITCH_CLIENT_SECRET"] ?? "ESCRIBE_AQUI_CLIENT_SECRET";
+  process.env["TWITCH_CLIENT_SECRET"] ?? "";
 
 // URI de redirección — debe coincidir EXACTAMENTE con la registrada en dev.twitch.tv
 // Ejemplo: https://tu-servicio.onrender.com/api/auth/callback

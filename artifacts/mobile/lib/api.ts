@@ -1,12 +1,19 @@
-const domain =
+// ── URL del servidor ──────────────────────────────────────────────────────────
+// En producción (APK) siempre apunta a Render.
+// En desarrollo, define EXPO_PUBLIC_DEV_HOST en .env para usar tu servidor local.
+// Ejemplo: EXPO_PUBLIC_DEV_HOST=192.168.1.100:5000
+
+const PRODUCTION_BASE = "https://botmodpanel.onrender.com/api";
+
+const devHost =
   typeof process !== "undefined"
-    ? process.env["EXPO_PUBLIC_DOMAIN"]
+    ? process.env["EXPO_PUBLIC_DEV_HOST"]
     : undefined;
 
-export const API_BASE = domain ? `https://${domain}/api` : "/api";
+export const API_BASE = devHost ? `http://${devHost}/api` : PRODUCTION_BASE;
 
 /** URL to paste into OBS as a Browser Source */
-export const OVERLAY_URL = `${API_BASE}/overlay`;
+export const OVERLAY_URL = "https://botmodpanel.onrender.com/api/overlay";
 
 // ── Sounds ────────────────────────────────────────────────────────────────────
 
@@ -279,6 +286,67 @@ export async function getMyModChannels(token: string): Promise<ModChannel[]> {
   const res = await fetch(`${API_BASE}/mods/channels`, { headers: authHeaders(token) });
   if (!res.ok) throw new Error(`Server error ${res.status}`);
   return res.json() as Promise<ModChannel[]>;
+}
+
+// ── Social Links ──────────────────────────────────────────────────────────────
+
+export interface SocialLink {
+  id: number;
+  name: string;
+  url: string;
+  platform: string;
+  color: string;
+  sortOrder: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export async function getSocialLinks(): Promise<SocialLink[]> {
+  const res = await fetch(`${API_BASE}/social-links`);
+  if (!res.ok) throw new Error(`Server error ${res.status}`);
+  return res.json() as Promise<SocialLink[]>;
+}
+
+export async function createSocialLink(data: {
+  name: string;
+  url: string;
+  platform: string;
+  color: string;
+  sortOrder?: number;
+}): Promise<SocialLink> {
+  const res = await fetch(`${API_BASE}/social-links`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error ?? `Server error ${res.status}`);
+  }
+  return res.json() as Promise<SocialLink>;
+}
+
+export async function updateSocialLink(
+  id: number,
+  data: Partial<{ name: string; url: string; platform: string; color: string; sortOrder: number; isActive: boolean }>
+): Promise<SocialLink> {
+  const res = await fetch(`${API_BASE}/social-links/${id}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`Server error ${res.status}`);
+  return res.json() as Promise<SocialLink>;
+}
+
+export async function triggerSocialLink(id: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/social-links/${id}/trigger`, { method: "POST" });
+  if (!res.ok) throw new Error(`Server error ${res.status}`);
+}
+
+export async function deleteSocialLink(id: number): Promise<void> {
+  const res = await fetch(`${API_BASE}/social-links/${id}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`Server error ${res.status}`);
 }
 
 // FUTURE ACTION SLOT: sendAIQuery(user, text)   → POST /api/ai/query

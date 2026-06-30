@@ -324,7 +324,7 @@ function StreamSettings() {
           style={[styles.streamField, { backgroundColor: "#9146ff18", borderColor: "#9146ff44" }]}
         >
           <View style={styles.streamFieldLeft}>
-            <Feather name="megaphone" size={14} color="#9146ff" />
+            <Feather name="speaker" size={14} color="#9146ff" />
             <View>
               <Text style={[styles.streamFieldLabel, { color: "#9146ff" }]}>Send Announcement</Text>
               <Text style={[styles.streamFieldValue, { color: colors.mutedForeground }]} numberOfLines={1}>
@@ -431,7 +431,7 @@ function StreamSettings() {
                   ? <ActivityIndicator size="small" color={annColor === "primary" ? "#0e0e10" : "#fff"} />
                   : (
                     <>
-                      <Feather name="megaphone" size={14} color={annColor === "primary" ? "#0e0e10" : "#fff"} />
+                      <Feather name="speaker" size={14} color={annColor === "primary" ? "#0e0e10" : "#fff"} />
                       <Text style={[styles.modalSaveTxt, { color: annColor === "primary" ? "#0e0e10" : "#fff" }]}>
                         Send to Chat
                       </Text>
