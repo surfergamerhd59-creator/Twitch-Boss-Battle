@@ -4,16 +4,19 @@ import * as schema from "./schema";
 
 const { Pool } = pg;
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
+const DATABASE_URL = process.env["DATABASE_URL"] ?? "";
+
+if (!DATABASE_URL) {
+  console.warn(
+    "⚠️  DATABASE_URL no está configurado. " +
+    "Edita artifacts/api-server/src/config.ts o define la variable de entorno."
   );
 }
 
 const isProduction = process.env.NODE_ENV === "production";
 
 export const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: DATABASE_URL || undefined,
   ssl: isProduction ? { rejectUnauthorized: false } : false,
 });
 

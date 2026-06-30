@@ -1,9 +1,7 @@
 import { db, streamersTable } from "@workspace/db";
 import { eq } from "drizzle-orm";
 import type { Streamer } from "@workspace/db";
-
-const CLIENT_ID = process.env["TWITCH_CLIENT_ID"] ?? "";
-const CLIENT_SECRET = process.env["TWITCH_CLIENT_SECRET"] ?? "";
+import { TWITCH_CLIENT_ID as CLIENT_ID, TWITCH_CLIENT_SECRET as CLIENT_SECRET } from "../config.js";
 
 // ── Token helpers ─────────────────────────────────────────────────────────────
 

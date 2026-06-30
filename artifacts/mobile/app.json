@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Twitch Bot Control",
+    "name": "BotMod Panel",
     "slug": "mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -14,9 +14,23 @@
       "backgroundColor": "#0e0e10"
     },
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "com.surfergamerhd59.botmodpanel",
+      "infoPlist": {
+        "UIBackgroundModes": []
+      }
     },
-    "android": {},
+    "android": {
+      "package": "com.surfergamerhd59.botmodpanel",
+      "versionCode": 1,
+      "allowBackup": false,
+      "softwareKeyboardLayoutMode": "pan",
+      "permissions": [
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.VIBRATE"
+      ]
+    },
     "web": {
       "favicon": "./assets/images/icon.png"
     },

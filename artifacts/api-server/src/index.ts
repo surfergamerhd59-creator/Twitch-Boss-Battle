@@ -1,6 +1,9 @@
-import app from "./app";
-import { logger } from "./lib/logger";
-import { runMigrations } from "./lib/migrate";
+import { warnMissingConfig } from "./config.js";
+import app from "./app.js";
+import { logger } from "./lib/logger.js";
+import { runMigrations } from "./lib/migrate.js";
+
+warnMissingConfig();
 
 const rawPort = process.env["PORT"];
 

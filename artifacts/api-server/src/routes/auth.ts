@@ -5,13 +5,14 @@ import { eq } from "drizzle-orm";
 import { getUserInfo, validateToken } from "../lib/twitch-api.js";
 import { botManager } from "../lib/twitch-bot-manager.js";
 import { requireAuth } from "../middlewares/requireAuth.js";
+import {
+  TWITCH_CLIENT_ID as CLIENT_ID,
+  TWITCH_CLIENT_SECRET as CLIENT_SECRET,
+  TWITCH_REDIRECT_URI as REDIRECT_URI,
+  SESSION_SECRET,
+} from "../config.js";
 
 const router: Router = Router();
-
-const CLIENT_ID = process.env["TWITCH_CLIENT_ID"] ?? "";
-const CLIENT_SECRET = process.env["TWITCH_CLIENT_SECRET"] ?? "";
-const REDIRECT_URI = process.env["TWITCH_REDIRECT_URI"] ?? "";
-const SESSION_SECRET = process.env["SESSION_SECRET"] ?? "changeme";
 
 const SCOPES = [
   "chat:read",
