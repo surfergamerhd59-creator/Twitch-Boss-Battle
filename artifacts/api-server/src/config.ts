@@ -20,15 +20,15 @@ export const DATABASE_URL: string =
 // ── Twitch OAuth ──────────────────────────────────────────────────────────────
 // Obtén estos valores en: https://dev.twitch.tv/console → tu aplicación
 export const TWITCH_CLIENT_ID: string =
-  process.env["TWITCH_CLIENT_ID"] ?? "ESCRIBE_AQUI_CLIENT_ID";
+  process.env["TWITCH_CLIENT_ID"] ?? "8thpeoq55sw1nnpupq8vysahozopfc";
 
 export const TWITCH_CLIENT_SECRET: string =
-  process.env["TWITCH_CLIENT_SECRET"] ?? "";
+  process.env["TWITCH_CLIENT_SECRET"] ?? "pjsurvink4ye9kubs3qlmyn2m74irj";
 
 // URI de redirección — debe coincidir EXACTAMENTE con la registrada en dev.twitch.tv
 // Ejemplo: https://tu-servicio.onrender.com/api/auth/callback
 export const TWITCH_REDIRECT_URI: string =
-  process.env["TWITCH_REDIRECT_URI"] ?? "ESCRIBE_AQUI_REDIRECT_URI";
+  process.env["TWITCH_REDIRECT_URI"] ?? "https://botmodpanel.onrender.com";
 
 // ── Seguridad JWT ─────────────────────────────────────────────────────────────
 // Clave secreta para firmar las sesiones — usa una cadena larga y aleatoria

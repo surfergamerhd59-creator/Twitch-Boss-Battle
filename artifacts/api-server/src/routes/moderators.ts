@@ -109,7 +109,7 @@ router.post("/mods", requireAuth, async (req: Request, res: Response) => {
 // ── Revoke mod access ─────────────────────────────────────────────────────────
 router.delete("/mods/:modId", requireAuth, async (req: Request, res: Response) => {
   const { twitchId: streamerId } = req.twitchUser!;
-  const modId = parseInt(req.params["modId"] ?? "0", 10);
+  const modId = parseInt((req.params as { modId: string }).modId ?? "0", 10);
 
   if (!modId) { res.status(400).json({ error: "Invalid modId" }); return; }
 

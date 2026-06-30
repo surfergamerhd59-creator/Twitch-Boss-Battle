@@ -31,6 +31,7 @@ import {
   postStreamCategory,
   searchCategories,
   postAnnouncement,
+  createClip,
   type ChannelInfo,
   type Category,
   type AnnouncementColor,
@@ -128,6 +129,10 @@ function StreamSettings() {
   const [annColor, setAnnColor] = useState<AnnouncementColor>("primary");
   const [annSending, setAnnSending] = useState(false);
   const [annError, setAnnError] = useState("");
+
+  // Clip
+  const [clipping, setClipping] = useState(false);
+  const [clipMsg, setClipMsg] = useState("");
 
   const loadInfo = useCallback(async () => {
     if (!user) return;
@@ -244,6 +249,26 @@ function StreamSettings() {
     }
   };
 
+  // ── Clip ─────────────────────────────────────────────────────────────────
+
+  const handleCreateClip = async () => {
+    if (!user || clipping) return;
+    if (!info?.isLive) { setClipMsg("Stream is offline — clips only work while live"); setTimeout(() => setClipMsg(""), 3000); return; }
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+    setClipping(true);
+    setClipMsg("");
+    try {
+      const clip = await createClip(targetUsername, user.token);
+      setClipMsg(`✂️ Clip saved! ID: ${clip.clipId}`);
+      setTimeout(() => setClipMsg(""), 5000);
+    } catch (e: unknown) {
+      setClipMsg(e instanceof Error ? e.message : "Failed to create clip");
+      setTimeout(() => setClipMsg(""), 4000);
+    } finally {
+      setClipping(false);
+    }
+  };
+
   const botColor = info?.botStatus === "connected" ? colors.success : colors.mutedForeground;
 
   if (!user) {
@@ -267,9 +292,28 @@ function StreamSettings() {
           <View style={styles.streamHeaderInfo}>
             <Text style={[styles.streamUsername, { color: colors.foreground }]}>@{user.displayName}</Text>
             <View style={styles.botStatusRow}>
-              <View style={[styles.botDot, { backgroundColor: botColor }]} />
-              <Text style={[styles.botStatusTxt, { color: botColor }]}>
-                Bot {info?.botStatus ?? "—"}
+              {info?.isLive ? (
+                <>
+                  <View style={[styles.botDot, { backgroundColor: "#ff4040" }]} />
+                  <Text style={[styles.botStatusTxt, { color: "#ff4040", fontFamily: "Inter_600SemiBold" }]}>
+                    LIVE
+                  </Text>
+                  {info.viewerCount !== undefined && (
+                    <Text style={[styles.botStatusTxt, { color: colors.mutedForeground }]}>
+                      · {info.viewerCount.toLocaleString()} viewers
+                    </Text>
+                  )}
+                </>
+              ) : (
+                <>
+                  <View style={[styles.botDot, { backgroundColor: colors.mutedForeground }]} />
+                  <Text style={[styles.botStatusTxt, { color: colors.mutedForeground }]}>
+                    {info ? "Offline" : "—"}
+                  </Text>
+                </>
+              )}
+              <Text style={[styles.botStatusTxt, { color: colors.mutedForeground }]}>
+                {"  "}Bot {info?.botStatus ?? "—"}
               </Text>
             </View>
           </View>
@@ -334,6 +378,42 @@ function StreamSettings() {
           </View>
           <Feather name="chevron-right" size={15} color="#9146ff" />
         </Pressable>
+
+        {/* Create Clip */}
+        <Pressable
+          onPress={handleCreateClip}
+          disabled={clipping}
+          style={({ pressed }) => [
+            styles.streamField,
+            {
+              backgroundColor: info?.isLive ? "#ff404018" : colors.secondary,
+              borderColor: info?.isLive ? "#ff404044" : colors.border,
+              opacity: clipping || pressed ? 0.75 : 1,
+            },
+          ]}
+        >
+          <View style={styles.streamFieldLeft}>
+            {clipping
+              ? <ActivityIndicator size="small" color="#ff4040" />
+              : <Feather name="scissors" size={14} color={info?.isLive ? "#ff4040" : colors.mutedForeground} />}
+            <View>
+              <Text style={[styles.streamFieldLabel, { color: info?.isLive ? "#ff4040" : colors.mutedForeground }]}>
+                Create Clip
+              </Text>
+              <Text style={[styles.streamFieldValue, { color: colors.mutedForeground }]} numberOfLines={1}>
+                {clipping ? "Saving clip…" : info?.isLive ? "Clip last 30s of your stream" : "Go live to create clips"}
+              </Text>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={15} color={info?.isLive ? "#ff4040" : colors.mutedForeground} />
+        </Pressable>
+
+        {/* Clip status message */}
+        {!!clipMsg && (
+          <Text style={[styles.streamError, { color: clipMsg.startsWith("✂️") ? colors.success : colors.destructive }]}>
+            {clipMsg}
+          </Text>
+        )}
       </View>
 
       {/* ── Title Modal ───────────────────────────────────────────────────── */}

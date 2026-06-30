@@ -65,29 +65,48 @@ export interface ChannelInfo {
   gameName: string;
   gameId: string;
   viewerCount?: number;
+  isLive?: boolean;
 }
 
 export async function getChannelInfo(streamer: Streamer): Promise<ChannelInfo> {
-  const res = await helixRequest(
-    streamer,
-    `/channels?broadcaster_id=${streamer.twitchId}`
-  );
-  if (!res.ok) throw new Error(`Helix error ${res.status}`);
-  const data = await res.json() as { data: Array<{
+  // Fetch channel metadata and live stream data in parallel
+  const [chanRes, streamRes] = await Promise.all([
+    helixRequest(streamer, `/channels?broadcaster_id=${streamer.twitchId}`),
+    helixRequest(streamer, `/streams?user_id=${streamer.twitchId}&first=1`),
+  ]);
+
+  if (!chanRes.ok) throw new Error(`Helix error ${chanRes.status}`);
+
+  const chanData = await chanRes.json() as { data: Array<{
     broadcaster_id: string;
     broadcaster_name: string;
     title: string;
     game_name: string;
     game_id: string;
   }> };
-  const ch = data.data[0];
+  const ch = chanData.data[0];
   if (!ch) throw new Error("Channel not found");
+
+  let viewerCount: number | undefined;
+  let isLive = false;
+
+  if (streamRes.ok) {
+    const streamData = await streamRes.json() as { data: Array<{ viewer_count: number }> };
+    const stream = streamData.data[0];
+    if (stream) {
+      isLive = true;
+      viewerCount = stream.viewer_count;
+    }
+  }
+
   return {
     broadcasterId: ch.broadcaster_id,
     broadcasterName: ch.broadcaster_name,
     title: ch.title,
     gameName: ch.game_name,
     gameId: ch.game_id,
+    viewerCount,
+    isLive,
   };
 }
 
@@ -212,6 +231,24 @@ export async function sendAnnouncement(
     const body = await res.text();
     throw new Error(`Failed to send announcement: ${res.status} ${body}`);
   }
+}
+
+// ── Create clip ───────────────────────────────────────────────────────────────
+
+export async function createClip(streamer: Streamer): Promise<{ id: string; editUrl: string }> {
+  const res = await helixRequest(
+    streamer,
+    `/clips?broadcaster_id=${streamer.twitchId}`,
+    { method: "POST" }
+  );
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Failed to create clip: ${res.status} ${body}`);
+  }
+  const data = await res.json() as { data: Array<{ id: string; edit_url: string }> };
+  const clip = data.data[0];
+  if (!clip) throw new Error("Clip creation returned no data");
+  return { id: clip.id, editUrl: clip.edit_url };
 }
 
 // ── Get display name ──────────────────────────────────────────────────────────

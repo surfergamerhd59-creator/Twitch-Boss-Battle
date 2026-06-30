@@ -153,6 +153,8 @@ export interface ChannelInfo {
   gameName: string;
   gameId: string;
   botStatus: "connected" | "connecting" | "disconnected" | "error";
+  viewerCount?: number;
+  isLive?: boolean;
 }
 
 export interface Category {
@@ -212,6 +214,21 @@ export async function searchCategories(username: string, query: string, token: s
 }
 
 export type AnnouncementColor = "primary" | "blue" | "green" | "orange" | "purple";
+
+export async function createClip(
+  username: string,
+  token: string
+): Promise<{ clipId: string; editUrl: string }> {
+  const res = await fetch(`${API_BASE}/stream/${username}/clip`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error ?? `Server error ${res.status}`);
+  }
+  return res.json() as Promise<{ clipId: string; editUrl: string }>;
+}
 
 export async function postAnnouncement(
   username: string,

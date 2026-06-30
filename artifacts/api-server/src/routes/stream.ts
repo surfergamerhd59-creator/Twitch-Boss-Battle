@@ -9,6 +9,7 @@ import {
   updateStreamCategory,
   searchCategories,
   sendAnnouncement,
+  createClip,
   type AnnouncementColor,
 } from "../lib/twitch-api.js";
 import { botManager } from "../lib/twitch-bot-manager.js";
@@ -156,6 +157,30 @@ router.post("/stream/:username/announcement", requireAuth, async (req: Request, 
     res.json({ ok: true });
   } catch (err: unknown) {
     req.log.error({ err }, "Failed to send announcement");
+    const msg = err instanceof Error ? err.message : "Failed";
+    res.status(500).json({ error: msg });
+  }
+});
+
+// ── Create clip ───────────────────────────────────────────────────────────────
+router.post("/stream/:username/clip", requireAuth, async (req: Request, res: Response) => {
+  const { username } = req.params as { username: string };
+
+  const canAccess = await canAccessChannel(username, req.twitchUser!);
+  if (!canAccess) {
+    res.status(403).json({ error: "Access denied" });
+    return;
+  }
+
+  const streamer = await getStreamer(username);
+  if (!streamer) { res.status(404).json({ error: "Streamer not found" }); return; }
+
+  try {
+    const clip = await createClip(streamer);
+    req.log.info({ username, clipId: clip.id, by: req.twitchUser!.username }, "Clip created");
+    res.json({ ok: true, clipId: clip.id, editUrl: clip.editUrl });
+  } catch (err: unknown) {
+    req.log.error({ err }, "Failed to create clip");
     const msg = err instanceof Error ? err.message : "Failed";
     res.status(500).json({ error: msg });
   }
