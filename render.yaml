@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: botmod-panel-api
+    runtime: node
+    region: oregon
+    plan: free
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @workspace/api-server run build
+    startCommand: node --enable-source-maps artifacts/api-server/dist/index.mjs
+    healthCheckPath: /api/health
+    envVars:
+      # Render conecta la BD automáticamente
+      - key: DATABASE_URL
+        fromDatabase:
+          name: botmod-panel-db
+          property: connectionString
+
+      # Render genera este secreto automáticamente (no necesitas tocarlo)
+      - key: SESSION_SECRET
+        generateValue: true
+
+      # NODE_ENV=production activa SSL en la conexión a la BD
+      - key: NODE_ENV
+        value: production
+
+      # ── Rellena estos 3 en el dashboard de Render después de hacer deploy ──
+      - key: TWITCH_CLIENT_ID
+        sync: false
+      - key: TWITCH_CLIENT_SECRET
+        sync: false
+      - key: TWITCH_REDIRECT_URI
+        sync: false
+
+databases:
+  - name: botmod-panel-db
+    plan: free
+    region: oregon
