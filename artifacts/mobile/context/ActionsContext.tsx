@@ -7,6 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 
 import {
   ACTIONS,
@@ -27,12 +28,21 @@ interface ActionsContextType extends ActionsState {
   getPermission: (actionId: string) => PermissionLevel;
   startCooldown: (actionId: string, seconds: number) => void;
   isCoolingDown: (actionId: string) => boolean;
-  // FUTURE ACTION SLOT: setActionEnabled(id, enabled)
-  // FUTURE ACTION SLOT: setChannelPointCost(id, cost)
-  // FUTURE ACTION SLOT: resetAllPermissions()
 }
 
 const STORAGE_KEY = "actions_permissions_v1";
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function computeRemaining(endTimes: Record<string, number>): Record<string, number> {
+  const now = Date.now();
+  const result: Record<string, number> = {};
+  for (const [id, end] of Object.entries(endTimes)) {
+    const remaining = Math.ceil((end - now) / 1000);
+    if (remaining > 0) result[id] = remaining;
+  }
+  return result;
+}
 
 // ── Context ───────────────────────────────────────────────────────────────────
 
@@ -47,9 +57,67 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
     buildDefaultPermissions()
   );
   const [cooldowns, setCooldowns] = useState<Record<string, number>>({});
-  const timers = useRef<Record<string, ReturnType<typeof setInterval>>>({});
 
-  // Restore persisted permissions
+  // Store absolute end timestamps — survives background/foreground transitions
+  const endTimesRef = useRef<Record<string, number>>({});
+  // Single shared tick interval — replaces per-action intervals
+  const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // ── Tick: recalculate remaining seconds from timestamps ───────────────────
+
+  const tick = useCallback(() => {
+    const remaining = computeRemaining(endTimesRef.current);
+    // Remove expired entries from the ref
+    for (const id of Object.keys(endTimesRef.current)) {
+      if (!remaining[id]) delete endTimesRef.current[id];
+    }
+    setCooldowns(remaining);
+    // Stop the interval when all cooldowns have expired
+    if (Object.keys(remaining).length === 0 && tickRef.current) {
+      clearInterval(tickRef.current);
+      tickRef.current = null;
+    }
+  }, []);
+
+  const startTick = useCallback(() => {
+    if (tickRef.current) return; // already running
+    tickRef.current = setInterval(tick, 1000);
+  }, [tick]);
+
+  const stopTick = useCallback(() => {
+    if (tickRef.current) {
+      clearInterval(tickRef.current);
+      tickRef.current = null;
+    }
+  }, []);
+
+  // ── AppState: pause interval when backgrounded, resume on foreground ───────
+
+  useEffect(() => {
+    const handleAppState = (next: AppStateStatus) => {
+      if (next === "active") {
+        // Recalculate immediately after returning from background
+        const remaining = computeRemaining(endTimesRef.current);
+        for (const id of Object.keys(endTimesRef.current)) {
+          if (!remaining[id]) delete endTimesRef.current[id];
+        }
+        setCooldowns(remaining);
+        if (Object.keys(remaining).length > 0) startTick();
+      } else {
+        // background / inactive — stop the interval, timestamps are preserved
+        stopTick();
+      }
+    };
+
+    const sub = AppState.addEventListener("change", handleAppState);
+    return () => {
+      sub.remove();
+      stopTick();
+    };
+  }, [startTick, stopTick]);
+
+  // ── Restore persisted permissions ─────────────────────────────────────────
+
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
       if (!raw) return;
@@ -66,6 +134,8 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
     },
     []
   );
+
+  // ── Permission actions ────────────────────────────────────────────────────
 
   const setPermission = useCallback(
     (actionId: string, level: PermissionLevel) => {
@@ -93,31 +163,20 @@ export function ActionsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const getPermission = useCallback(
-    (actionId: string): PermissionLevel =>
-      permissions[actionId] ?? "everyone",
+    (actionId: string): PermissionLevel => permissions[actionId] ?? "everyone",
     [permissions]
   );
+
+  // ── Cooldown: store end timestamp, drive display from single tick ─────────
 
   const startCooldown = useCallback(
     (actionId: string, seconds: number) => {
       if (seconds <= 0) return;
-      if (timers.current[actionId]) clearInterval(timers.current[actionId]);
+      endTimesRef.current[actionId] = Date.now() + seconds * 1000;
       setCooldowns((prev) => ({ ...prev, [actionId]: seconds }));
-      timers.current[actionId] = setInterval(() => {
-        setCooldowns((prev) => {
-          const remaining = (prev[actionId] ?? 0) - 1;
-          if (remaining <= 0) {
-            clearInterval(timers.current[actionId]);
-            delete timers.current[actionId];
-            const next = { ...prev };
-            delete next[actionId];
-            return next;
-          }
-          return { ...prev, [actionId]: remaining };
-        });
-      }, 1000);
+      startTick();
     },
-    []
+    [startTick]
   );
 
   const isCoolingDown = useCallback(
