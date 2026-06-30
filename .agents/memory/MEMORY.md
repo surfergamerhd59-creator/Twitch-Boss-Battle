@@ -1,0 +1,4 @@
+- [Twitch SaaS auth flow](twitch-saas-auth.md) — OAuth callback → HTML page with deep link `mobile://auth?token=...` + copyable JWT fallback; never redirect straight to scheme.
+- [Stack is Node.js not Java](stack-clarification.md) — user calls it "Java project" but entire stack is Node.js/Express + Expo. Never suggest Java/Spring.
+- [Mod permission architecture](mod-permissions.md) — canAccessChannel helper replaces ownership checks in stream routes; mods use own JWT but target streamer's username in route params.
+- [Workspace selector flow](workspace-flow.md) — post-login screen auto-skips to tabs if no mod channels exist; stores workspace in AsyncStorage @twitch_workspace; cleared on logout/new login.

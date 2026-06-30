@@ -1,0 +1,8 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "8DlgMJp6fi7Eqah68tjLe"
+uri = "file://artifacts/mobile/assets/images/icon.png"
+type = "image"
+title = "twitch bot icon"
