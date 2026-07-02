@@ -2,12 +2,19 @@
   "expo": {
     "name": "BotMod Panel",
     "slug": "mobile",
+    "owner": "ESCRIBE_AQUI_TU_USUARIO_EXPO",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "mobile",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/ESCRIBE_AQUI_TU_PROJECT_ID"
+    },
     "splash": {
       "image": "./assets/images/icon.png",
       "resizeMode": "contain",
@@ -42,11 +49,17 @@
         }
       ],
       "expo-font",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-updates"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "ESCRIBE_AQUI_TU_PROJECT_ID"
+      }
     }
   }
 }
