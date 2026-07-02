@@ -9,6 +9,6 @@ export default defineConfig({
   schema: path.join(__dirname, "./src/schema/index.ts"),
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL,
+    connectionString: "postgresql://admin:VvTOCWxSDdU9Gj3Ye5rwyzB7eeiTHtt0@://render.com",
+    ssl: { rejectUnauthorized: false }
   },
-});
