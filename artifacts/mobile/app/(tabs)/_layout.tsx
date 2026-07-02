@@ -29,6 +29,10 @@ function NativeTabLayout() {
         <Icon sf={{ default: "slider.horizontal.3", selected: "slider.horizontal.3" }} />
         <Label>Controls</Label>
       </NativeTabs.Trigger>
+      <NativeTabs.Trigger name="history">
+        <Icon sf={{ default: "clock.arrow.circlepath", selected: "clock.arrow.circlepath" }} />
+        <Label>History</Label>
+      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="permissions">
         <Icon sf={{ default: "lock", selected: "lock.fill" }} />
         <Label>Perms</Label>
@@ -95,6 +99,14 @@ function ClassicTabLayout() {
           title: "Controls",
           tabBarIcon: ({ color }) =>
             isIOS ? <SymbolView name="slider.horizontal.3" tintColor={color} size={22} /> : <Feather name="sliders" size={20} color={color} />,
+        }}
+      />
+      <Tabs.Screen
+        name="history"
+        options={{
+          title: "History",
+          tabBarIcon: ({ color }) =>
+            isIOS ? <SymbolView name="clock.arrow.circlepath" tintColor={color} size={22} /> : <Feather name="clock" size={20} color={color} />,
         }}
       />
       <Tabs.Screen

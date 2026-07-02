@@ -32,9 +32,13 @@ import {
   searchCategories,
   postAnnouncement,
   createClip,
+  getChatSettings,
+  updateChatSettings,
+  clearChat,
   type ChannelInfo,
   type Category,
   type AnnouncementColor,
+  type ChatSettings,
 } from "@/lib/api";
 
 // ── Shared RewardCard ─────────────────────────────────────────────────────────
@@ -134,6 +138,30 @@ function StreamSettings() {
   const [clipping, setClipping] = useState(false);
   const [clipMsg, setClipMsg] = useState("");
 
+  // Uptime ticker
+  const [uptime, setUptime] = useState("");
+
+  // Chat settings (Emote-only / Followers-only)
+  const [chatSettings, setChatSettings] = useState<ChatSettings | null>(null);
+  const [emoteSaving, setEmoteSaving] = useState(false);
+  const [followerSaving, setFollowerSaving] = useState(false);
+  const [chatSettingsError, setChatSettingsError] = useState("");
+
+  // Clear chat
+  const [clearing, setClearing] = useState(false);
+  const [clearMsg, setClearMsg] = useState("");
+  const [clearConfirm, setClearConfirm] = useState(false);
+
+  const loadChatSettings = useCallback(async () => {
+    if (!user) return;
+    try {
+      const settings = await getChatSettings(targetUsername, user.token);
+      setChatSettings(settings);
+    } catch {
+      // Non-fatal — chat settings are a secondary feature
+    }
+  }, [user, targetUsername]);
+
   const loadInfo = useCallback(async () => {
     if (!user) return;
     setInfoLoading(true);
@@ -149,6 +177,82 @@ function StreamSettings() {
   }, [user]);
 
   useEffect(() => { void loadInfo(); }, [loadInfo]);
+  useEffect(() => { void loadChatSettings(); }, [loadChatSettings]);
+
+  // Uptime ticker — recomputes every second while live
+  useEffect(() => {
+    if (!info?.isLive || !info.startedAt) { setUptime(""); return; }
+    const started = new Date(info.startedAt).getTime();
+    const tick = () => {
+      const diffSec = Math.max(0, Math.floor((Date.now() - started) / 1000));
+      const h = Math.floor(diffSec / 3600);
+      const m = Math.floor((diffSec % 3600) / 60);
+      const s = diffSec % 60;
+      setUptime(`${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`);
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [info?.isLive, info?.startedAt]);
+
+  // ── Chat modes ───────────────────────────────────────────────────────────
+
+  const handleToggleEmoteMode = async () => {
+    if (!user || !chatSettings || emoteSaving) return;
+    const next = !chatSettings.emoteMode;
+    setEmoteSaving(true);
+    setChatSettingsError("");
+    try {
+      await updateChatSettings(targetUsername, { emoteMode: next }, user.token);
+      setChatSettings((prev) => prev ? { ...prev, emoteMode: next } : prev);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e: unknown) {
+      setChatSettingsError(e instanceof Error ? e.message : "Failed to update chat mode");
+    } finally {
+      setEmoteSaving(false);
+    }
+  };
+
+  const handleToggleFollowerMode = async () => {
+    if (!user || !chatSettings || followerSaving) return;
+    const next = !chatSettings.followerMode;
+    setFollowerSaving(true);
+    setChatSettingsError("");
+    try {
+      await updateChatSettings(targetUsername, { followerMode: next, followerModeDurationMinutes: 0 }, user.token);
+      setChatSettings((prev) => prev ? { ...prev, followerMode: next } : prev);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    } catch (e: unknown) {
+      setChatSettingsError(e instanceof Error ? e.message : "Failed to update chat mode");
+    } finally {
+      setFollowerSaving(false);
+    }
+  };
+
+  // ── Clear chat ───────────────────────────────────────────────────────────
+
+  const handleClearChat = async () => {
+    if (!user || clearing) return;
+    if (!clearConfirm) {
+      setClearConfirm(true);
+      setTimeout(() => setClearConfirm(false), 3000);
+      return;
+    }
+    setClearConfirm(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    setClearing(true);
+    setClearMsg("");
+    try {
+      await clearChat(targetUsername, user.token);
+      setClearMsg("🧹 Chat cleared");
+      setTimeout(() => setClearMsg(""), 3000);
+    } catch (e: unknown) {
+      setClearMsg(e instanceof Error ? e.message : "Failed to clear chat");
+      setTimeout(() => setClearMsg(""), 4000);
+    } finally {
+      setClearing(false);
+    }
+  };
 
   // ── Title ────────────────────────────────────────────────────────────────
 
@@ -303,6 +407,11 @@ function StreamSettings() {
                       · {info.viewerCount.toLocaleString()} viewers
                     </Text>
                   )}
+                  {uptime ? (
+                    <Text style={[styles.botStatusTxt, { color: colors.mutedForeground }]}>
+                      {"  "}· ⏱ {uptime}
+                    </Text>
+                  ) : null}
                 </>
               ) : (
                 <>
@@ -361,6 +470,85 @@ function StreamSettings() {
           </View>
           <Feather name="chevron-right" size={15} color={colors.mutedForeground} />
         </Pressable>
+
+        {/* Chat modes: Emote-only / Followers-only */}
+        <View style={[styles.chatModeRow, { backgroundColor: colors.secondary, borderColor: colors.border }]}>
+          <Pressable
+            onPress={handleToggleEmoteMode}
+            disabled={!chatSettings || emoteSaving}
+            style={({ pressed }) => [
+              styles.chatModeChip,
+              {
+                backgroundColor: chatSettings?.emoteMode ? "#f7a93122" : "transparent",
+                borderColor: chatSettings?.emoteMode ? "#f7a931" : colors.border,
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
+          >
+            {emoteSaving
+              ? <ActivityIndicator size="small" color="#f7a931" />
+              : <Feather name="smile" size={14} color={chatSettings?.emoteMode ? "#f7a931" : colors.mutedForeground} />}
+            <Text style={[styles.chatModeTxt, { color: chatSettings?.emoteMode ? "#f7a931" : colors.mutedForeground }]}>
+              Emote Only
+            </Text>
+          </Pressable>
+          <Pressable
+            onPress={handleToggleFollowerMode}
+            disabled={!chatSettings || followerSaving}
+            style={({ pressed }) => [
+              styles.chatModeChip,
+              {
+                backgroundColor: chatSettings?.followerMode ? "#00c96f22" : "transparent",
+                borderColor: chatSettings?.followerMode ? "#00c96f" : colors.border,
+                opacity: pressed ? 0.8 : 1,
+              },
+            ]}
+          >
+            {followerSaving
+              ? <ActivityIndicator size="small" color="#00c96f" />
+              : <Feather name="user-check" size={14} color={chatSettings?.followerMode ? "#00c96f" : colors.mutedForeground} />}
+            <Text style={[styles.chatModeTxt, { color: chatSettings?.followerMode ? "#00c96f" : colors.mutedForeground }]}>
+              Followers Only
+            </Text>
+          </Pressable>
+        </View>
+        {chatSettingsError ? (
+          <Text style={[styles.streamError, { color: colors.destructive }]}>{chatSettingsError}</Text>
+        ) : null}
+
+        {/* Clear chat */}
+        <Pressable
+          onPress={handleClearChat}
+          disabled={clearing}
+          style={({ pressed }) => [
+            styles.streamField,
+            {
+              backgroundColor: clearConfirm ? "#ff404022" : colors.secondary,
+              borderColor: clearConfirm ? "#ff4040" : colors.border,
+              opacity: clearing || pressed ? 0.75 : 1,
+            },
+          ]}
+        >
+          <View style={styles.streamFieldLeft}>
+            {clearing
+              ? <ActivityIndicator size="small" color="#ff4040" />
+              : <Feather name="trash-2" size={14} color={clearConfirm ? "#ff4040" : colors.mutedForeground} />}
+            <View>
+              <Text style={[styles.streamFieldLabel, { color: clearConfirm ? "#ff4040" : colors.mutedForeground }]}>
+                {clearConfirm ? "Tap again to confirm" : "Clear Chat"}
+              </Text>
+              <Text style={[styles.streamFieldValue, { color: colors.mutedForeground }]} numberOfLines={1}>
+                {clearing ? "Clearing…" : "Wipes all messages from your chat"}
+              </Text>
+            </View>
+          </View>
+          <Feather name="chevron-right" size={15} color={clearConfirm ? "#ff4040" : colors.mutedForeground} />
+        </Pressable>
+        {!!clearMsg && (
+          <Text style={[styles.streamError, { color: clearMsg.startsWith("🧹") ? "#00c96f" : colors.destructive }]}>
+            {clearMsg}
+          </Text>
+        )}
 
         {/* Send announcement */}
         <Pressable
@@ -747,6 +935,24 @@ const styles = StyleSheet.create({
   streamFieldLabel: { fontSize: 10, fontFamily: "Inter_500Medium", letterSpacing: 0.5 },
   streamFieldValue: { fontSize: 14, fontFamily: "Inter_400Regular", marginTop: 1 },
   streamEmptyTxt: { fontSize: 13, fontFamily: "Inter_400Regular", textAlign: "center", paddingVertical: 8 },
+  chatModeRow: {
+    flexDirection: "row",
+    gap: 8,
+    padding: 8,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  chatModeChip: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 9,
+    borderWidth: 1,
+  },
+  chatModeTxt: { fontSize: 12, fontFamily: "Inter_500Medium" },
 
   // RewardCard
   card: {

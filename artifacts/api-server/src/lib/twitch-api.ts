@@ -66,6 +66,7 @@ export interface ChannelInfo {
   gameId: string;
   viewerCount?: number;
   isLive?: boolean;
+  startedAt?: string;
 }
 
 export async function getChannelInfo(streamer: Streamer): Promise<ChannelInfo> {
@@ -89,13 +90,15 @@ export async function getChannelInfo(streamer: Streamer): Promise<ChannelInfo> {
 
   let viewerCount: number | undefined;
   let isLive = false;
+  let startedAt: string | undefined;
 
   if (streamRes.ok) {
-    const streamData = await streamRes.json() as { data: Array<{ viewer_count: number }> };
+    const streamData = await streamRes.json() as { data: Array<{ viewer_count: number; started_at: string }> };
     const stream = streamData.data[0];
     if (stream) {
       isLive = true;
       viewerCount = stream.viewer_count;
+      startedAt = stream.started_at;
     }
   }
 
@@ -107,7 +110,92 @@ export async function getChannelInfo(streamer: Streamer): Promise<ChannelInfo> {
     gameId: ch.game_id,
     viewerCount,
     isLive,
+    startedAt,
   };
+}
+
+// ── Chat settings (emote-only / followers-only) ───────────────────────────────
+
+export interface ChatSettings {
+  emoteMode: boolean;
+  followerMode: boolean;
+  followerModeDurationMinutes: number;
+  slowMode: boolean;
+  slowModeWaitSeconds: number;
+  subscriberMode: boolean;
+  uniqueChatMode: boolean;
+}
+
+export async function getChatSettings(streamer: Streamer): Promise<ChatSettings> {
+  const params = new URLSearchParams({
+    broadcaster_id: streamer.twitchId,
+    moderator_id: streamer.twitchId,
+  });
+  const res = await helixRequest(streamer, `/chat/settings?${params.toString()}`);
+  if (!res.ok) throw new Error(`Failed to get chat settings: ${res.status}`);
+  const data = await res.json() as { data: Array<{
+    emote_mode: boolean;
+    follower_mode: boolean;
+    follower_mode_duration: number;
+    slow_mode: boolean;
+    slow_mode_wait_time: number;
+    subscriber_mode: boolean;
+    unique_chat_mode: boolean;
+  }> };
+  const s = data.data[0];
+  if (!s) throw new Error("Chat settings not found");
+  return {
+    emoteMode: s.emote_mode,
+    followerMode: s.follower_mode,
+    followerModeDurationMinutes: s.follower_mode_duration,
+    slowMode: s.slow_mode,
+    slowModeWaitSeconds: s.slow_mode_wait_time,
+    subscriberMode: s.subscriber_mode,
+    uniqueChatMode: s.unique_chat_mode,
+  };
+}
+
+export async function updateChatSettings(
+  streamer: Streamer,
+  settings: Partial<{ emoteMode: boolean; followerMode: boolean; followerModeDurationMinutes: number }>
+): Promise<void> {
+  const params = new URLSearchParams({
+    broadcaster_id: streamer.twitchId,
+    moderator_id: streamer.twitchId,
+  });
+  const body: Record<string, unknown> = {};
+  if (settings.emoteMode !== undefined) body["emote_mode"] = settings.emoteMode;
+  if (settings.followerMode !== undefined) {
+    body["follower_mode"] = settings.followerMode;
+    if (settings.followerMode) {
+      body["follower_mode_duration"] = settings.followerModeDurationMinutes ?? 0;
+    }
+  }
+
+  const res = await helixRequest(streamer, `/chat/settings?${params.toString()}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const errBody = await res.text();
+    throw new Error(`Failed to update chat settings: ${res.status} ${errBody}`);
+  }
+}
+
+// ── Clear chat ────────────────────────────────────────────────────────────────
+
+export async function clearChat(streamer: Streamer): Promise<void> {
+  const params = new URLSearchParams({
+    broadcaster_id: streamer.twitchId,
+    moderator_id: streamer.twitchId,
+  });
+  const res = await helixRequest(streamer, `/moderation/chat?${params.toString()}`, {
+    method: "DELETE",
+  });
+  if (!res.ok && res.status !== 204) {
+    const body = await res.text();
+    throw new Error(`Failed to clear chat: ${res.status} ${body}`);
+  }
 }
 
 // ── Update title ──────────────────────────────────────────────────────────────

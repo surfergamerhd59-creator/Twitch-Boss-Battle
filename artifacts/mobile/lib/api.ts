@@ -155,6 +155,7 @@ export interface ChannelInfo {
   botStatus: "connected" | "connecting" | "disconnected" | "error";
   viewerCount?: number;
   isLive?: boolean;
+  startedAt?: string;
 }
 
 export interface Category {
@@ -245,6 +246,90 @@ export async function postAnnouncement(
     const err = await res.json().catch(() => ({})) as { error?: string };
     throw new Error(err.error ?? `Server error ${res.status}`);
   }
+}
+
+// ── Chat settings (Emote-only / Followers-only) & Clear Chat ─────────────────
+
+export interface ChatSettings {
+  emoteMode: boolean;
+  followerMode: boolean;
+  followerModeDurationMinutes: number;
+  slowMode: boolean;
+  slowModeWaitSeconds: number;
+  subscriberMode: boolean;
+  uniqueChatMode: boolean;
+}
+
+export async function getChatSettings(username: string, token: string): Promise<ChatSettings> {
+  const res = await fetch(`${API_BASE}/stream/${username}/chat-settings`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error(`Server error ${res.status}`);
+  return res.json() as Promise<ChatSettings>;
+}
+
+export async function updateChatSettings(
+  username: string,
+  settings: Partial<{ emoteMode: boolean; followerMode: boolean; followerModeDurationMinutes: number }>,
+  token: string
+): Promise<void> {
+  const res = await fetch(`${API_BASE}/stream/${username}/chat-settings`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify(settings),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error ?? `Server error ${res.status}`);
+  }
+}
+
+export async function clearChat(username: string, token: string): Promise<void> {
+  const res = await fetch(`${API_BASE}/stream/${username}/clear-chat`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error ?? `Server error ${res.status}`);
+  }
+}
+
+// ── Bot activity log ──────────────────────────────────────────────────────────
+
+export interface ActivityLogEntry {
+  id: number;
+  streamerUsername: string;
+  actionType: string;
+  details: string | null;
+  performedBy: string;
+  createdAt: string;
+}
+
+export async function getActivityLog(username: string, token: string): Promise<ActivityLogEntry[]> {
+  const res = await fetch(`${API_BASE}/stream/${username}/activity`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error(`Server error ${res.status}`);
+  return res.json() as Promise<ActivityLogEntry[]>;
+}
+
+// ── Chat message history ──────────────────────────────────────────────────────
+
+export interface ChatMessageEntry {
+  id: number;
+  streamerUsername: string;
+  chatUsername: string;
+  message: string;
+  createdAt: string;
+}
+
+export async function getChatHistory(username: string, token: string): Promise<ChatMessageEntry[]> {
+  const res = await fetch(`${API_BASE}/stream/${username}/chat-history`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) throw new Error(`Server error ${res.status}`);
+  return res.json() as Promise<ChatMessageEntry[]>;
 }
 
 // ── Moderator management ─────────────────────────────────────────────────────

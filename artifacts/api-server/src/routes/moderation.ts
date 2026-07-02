@@ -1,6 +1,7 @@
 import { Router, type Request, type Response } from "express";
 import { db, userBansTable } from "@workspace/db";
 import { eq, and, or, isNull, gt } from "drizzle-orm";
+import { logActivity } from "../lib/activity-log.js";
 
 const router: Router = Router();
 
@@ -72,6 +73,13 @@ router.post("/moderation/ban", async (req: Request, res: Response) => {
       .returning();
 
     req.log.info({ username, type, durationMinutes }, "User moderation action");
+    const performedBy = req.twitchUser?.username ?? "unknown";
+    await logActivity(
+      performedBy,
+      type,
+      `${type === "ban" ? "Banned" : "Timed out"} ${username.trim()}${durationMinutes ? ` for ${durationMinutes}m` : ""}${reason ? ` — ${reason.trim()}` : ""}`,
+      performedBy
+    );
     res.status(201).json(row);
   } catch (err) {
     req.log.error({ err }, "Failed to create ban");
@@ -87,10 +95,15 @@ router.delete("/moderation/ban/:id", async (req: Request, res: Response) => {
     return;
   }
   try {
-    await db
+    const [row] = await db
       .update(userBansTable)
       .set({ isActive: false })
-      .where(eq(userBansTable.id, id));
+      .where(eq(userBansTable.id, id))
+      .returning();
+    if (row) {
+      const performedBy = req.twitchUser?.username ?? "unknown";
+      await logActivity(performedBy, "unban", `Removed ${row.type} on ${row.username}`, performedBy);
+    }
     res.json({ ok: true });
   } catch (err) {
     req.log.error({ err }, "Failed to remove ban");

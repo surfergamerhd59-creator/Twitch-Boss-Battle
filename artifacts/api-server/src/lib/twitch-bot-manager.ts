@@ -15,6 +15,8 @@
  */
 
 import type { Streamer } from "@workspace/db";
+import { db, chatMessagesTable } from "@workspace/db";
+import { eq, desc } from "drizzle-orm";
 
 // tmi.js is a CJS module — dynamic import lets esbuild handle it
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -68,6 +70,19 @@ class TwitchBotManager {
       entry.status = "disconnected";
     });
 
+    // Persist chat messages for the in-app chat history view.
+    // Non-fatal: a DB hiccup here must never break the chat connection.
+    client.on("message", (_channel: string, tags: { username?: string }, message: string, self: boolean) => {
+      if (self) return;
+      db.insert(chatMessagesTable)
+        .values({
+          streamerUsername: streamer.username,
+          chatUsername: tags.username ?? "unknown",
+          message,
+        })
+        .catch(() => {});
+    });
+
     try {
       await client.connect();
       entry.status = "connected";
@@ -111,6 +126,17 @@ class TwitchBotManager {
       status: e.status,
       channel: e.channel,
     }));
+  }
+
+  /** Fetch recent chat history persisted from the connected bot */
+  async getChatHistory(username: string, limit = 50) {
+    const rows = await db
+      .select()
+      .from(chatMessagesTable)
+      .where(eq(chatMessagesTable.streamerUsername, username))
+      .orderBy(desc(chatMessagesTable.createdAt))
+      .limit(limit);
+    return rows.reverse();
   }
 }
 
