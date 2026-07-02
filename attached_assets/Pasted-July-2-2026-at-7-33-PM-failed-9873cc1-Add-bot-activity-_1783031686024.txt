@@ -1,0 +1,33 @@
+July 2, 2026 at 7:33 PM
+failed
+9873cc1
+Add bot activity log and chat history features to the platform Introduces new database tables for bot activity and chat messages, enhances the Twitch API with endpoints for chat settings and clearing chat, integrates activity logging into moderation actions, and adds a history tab to the mobile app to display bot activity and chat logs. Replit-Commit-Author: Agent Replit-Commit-Session-Id: e459c62c-62f1-4246-9ad1-5633792cfee8 Replit-Commit-Checkpoint-Type: full_checkpoint Replit-Commit-Event-Id: fb24b390-b6d0-4fbb-8606-d975e5ae24fd Replit-Commit-Screenshot-Url: https://storage.googleapis.com/screenshot-production-us-central1/ce9b9f0e-3d9a-4bb9-9fc1-279b182548a5/e459c62c-62f1-4246-9ad1-5633792cfee8/uNBCFBI Replit-Helium-Checkpoint-Created: true
+
+Rollback
+Exited with status 1 while building your code.
+Read our docs for common ways to troubleshoot your deploy.
+
+All logs
+Search
+Search logs
+
+Live tail
+
+
+
+==> Cloning from https://github.com/surfergamerhd59-creator/Twitch-Boss-Battle
+==> Checking out commit 9873cc1370a2b5f5adc597cfb18ab0b25b4db81d in branch main
+==> Using Node.js version 24.14.1 (default)
+==> Docs on specifying a Node.js version: https://render.com/docs/node-version
+==> Running build command 'pnpm install --frozen-lockfile && pnpm --filter @workspace/db run push-force && pnpm --filter @workspace/api-server run build'...
+> @workspace/db@0.0.0 push-force /opt/render/project/src/lib/db
+> drizzle-kit push --force --config ./drizzle.config.ts
+Reading config file '/opt/render/project/src/lib/db/drizzle.config.ts'
+Using 'pg' driver for database querying
+[⣷] Pulling schema from database...
+[⣷] Pulling schema from database...
+/opt/render/project/src/lib/db:
+ ERR_PNPM_RECURSIVE_RUN_FIRST_FAIL  @workspace/db@0.0.0 push-force: `drizzle-kit push --force --config ./drizzle.config.ts`
+Exit status 1
+==> Build failed 😞
+==> Common ways to troubleshoot your deploy: https://render.com/docs/troubleshooting-deploys
