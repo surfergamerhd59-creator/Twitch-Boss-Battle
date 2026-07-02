@@ -58,6 +58,7 @@
   },
   "dependencies": {
     "date-fns": "^3.6.0",
-    "expo-clipboard": "^8.0.8"
+    "expo-clipboard": "^8.0.8",
+    "expo-updates": "^57.0.5"
   }
 }
