@@ -1,11 +1,1 @@
-import { defineConfig } from "drizzle-kit";
-import path from "path";
-
-export default defineConfig({
-  schema: path.join(__dirname, "./src/schema/index.ts"),
-  dialect: "postgresql",
-  dbCredentials: {
-    url: "postgresql://admin:VvTOCWxSDdU9Gj3Ye5rwyzB7eeiTHtt0@://render.com",
-    ssl: { rejectUnauthorized: false }
-  }
-});
+import { defineConfig } from "drizzle-kit";import path from "path";export default defineConfig({schema: path.join(__dirname, "./src/schema/index.ts"),dialect: "postgresql",dbCredentials: {url: "postgresql://admin:VvTOCWxSDdU9Gj3Ye5rwyzB7eeiTHtt0@render.com",ssl: { rejectUnauthorized: false }}});
