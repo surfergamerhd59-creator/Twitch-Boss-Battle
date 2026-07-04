@@ -8,3 +8,5 @@ jobs:
     params:
       platform: android
       profile: preview
+    before_install:
+      - npm install -g pnpm@9.15.2
