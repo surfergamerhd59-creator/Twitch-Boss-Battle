@@ -8,5 +8,5 @@ jobs:
     params:
       platform: android
       profile: preview
-    before_install:
-      - npm install -g pnpm@9.15.2
+    env:
+      NPM_CONFIG_FROZEN_LOCKFILE: "false"
