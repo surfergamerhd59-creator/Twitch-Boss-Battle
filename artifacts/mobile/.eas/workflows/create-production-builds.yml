@@ -8,5 +8,5 @@ jobs:
     params:
       platform: android
       profile: preview
-    env:
-      NPM_CONFIG_FROZEN_LOCKFILE: "false"
+    before_install:
+      - cd artifacts/mobile && npm install
