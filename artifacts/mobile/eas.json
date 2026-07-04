@@ -1,26 +1,19 @@
 {
   "cli": {
-    "version": ">= 16.0.0",
-    "appVersionSource": "local"
+    "version": ">=0.0.0",
+    "requireCommit": false
   },
   "build": {
-    "preview": {
-      "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease"
-      },
-      "distribution": "internal",
-      "channel": "preview"
+    "development": {
+      "developmentClient": true,
+      "distribution": "internal"
     },
-    "production": {
+    "preview": {
+      "distribution": "internal",
       "android": {
-        "buildType": "app-bundle"
-      },
-      "distribution": "store",
-      "channel": "production"
-    }
-  },
-  "submit": {
+        "buildType": "apk"
+      }
+    },
     "production": {}
   }
 }
