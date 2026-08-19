@@ -20,10 +20,10 @@ export const DATABASE_URL: string =
 // ── Twitch OAuth ──────────────────────────────────────────────────────────────
 // Obtén estos valores en: https://dev.twitch.tv/console → tu aplicación
 export const TWITCH_CLIENT_ID: string =
-  process.env["TWITCH_CLIENT_ID"] ?? "ESCRIBE_AQUI_TWITCH_CLIENT_ID";
+  process.env["TWITCH_CLIENT_ID"] ?? "8thpeoq55sw1nnpupq8vysahozopfc";
 
 export const TWITCH_CLIENT_SECRET: string =
-  process.env["TWITCH_CLIENT_SECRET"] ?? "ESCRIBE_AQUI_TWITCH_CLIENT_SECRET";
+  process.env["TWITCH_CLIENT_SECRET"] ?? "h1vkinsg8mtec8vkecju4hsb8esmd4";
 
 // URI de redirección — debe coincidir EXACTAMENTE con la registrada en dev.twitch.tv
 // Ejemplo: https://tu-servicio.onrender.com/api/auth/callback
