@@ -21,10 +21,6 @@ function NativeTabLayout() {
         <Icon sf={{ default: "flame", selected: "flame.fill" }} />
         <Label>Boss</Label>
       </NativeTabs.Trigger>
-      <NativeTabs.Trigger name="stream">
-        <Icon sf={{ default: "play.tv", selected: "play.tv.fill" }} />
-        <Label>Stream</Label>
-      </NativeTabs.Trigger>
       <NativeTabs.Trigger name="soundboard">
         <Icon sf={{ default: "speaker.wave.2", selected: "speaker.wave.2.fill" }} />
         <Label>Sounds</Label>
@@ -87,14 +83,6 @@ function ClassicTabLayout() {
           title: "Boss",
           tabBarIcon: ({ color }) =>
             isIOS ? <SymbolView name="flame.fill" tintColor={color} size={22} /> : <Feather name="alert-triangle" size={20} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="stream"
-        options={{
-          title: "Stream",
-          tabBarIcon: ({ color }) =>
-            isIOS ? <SymbolView name="play.tv.fill" tintColor={color} size={22} /> : <Feather name="tv" size={20} color={color} />,
         }}
       />
       <Tabs.Screen
