@@ -35,96 +35,11 @@ app.use("/api", router);
 // FUTURE ACTION SLOT: app.use("/api/ai", aiRouter)
 // FUTURE ACTION SLOT: app.use("/api/boss", bossRouter)
 
-// === INICIO DE LA INTEGRACIÓN DE TWITCH Y DRIZZLE ===
-import { db } from "../../../db/index.js";
-import * as schema from "../../../db/schema/index.js";
-
-app.get("/", async (req, res) => {
-  const { code } = req.query;
-
-  if (code && typeof code === "string") {
-    try {
-      // 1. Intercambiar código de Twitch por los tokens de acceso
-      const tokenResponse = await fetch("https://twitch.tv", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: new URLSearchParams({
-          client_id: process.env.TWITCH_CLIENT_ID || "",
-          client_secret: process.env.TWITCH_CLIENT_SECRET || "",
-          code: code,
-          grant_type: "authorization_code",
-          redirect_uri: "https://onrender.com"
-        })
-      });
-
-      const tokenData = await tokenResponse.json();
-
-      if (!tokenResponse.ok) {
-        throw new Error(tokenData.message || "Error al obtener tokens de Twitch");
-      }
-
-      const { access_token, refresh_token } = tokenData;
-
-      // 2. Obtener datos del perfil del Streamer
-      const userResponse = await fetch("https://twitch.tv", {
-        method: "GET",
-        headers: {
-          "Client-ID": process.env.TWITCH_CLIENT_ID || "",
-          "Authorization": `Bearer ${access_token}`
-        }
-      });
-
-      const userData = await userResponse.json();
-      
-      if (!userResponse.ok || !userData.data || userData.data.length === 0) {
-        throw new Error("No se pudieron obtener los datos de usuario de Twitch");
-      }
-
-      const streamerProfile = userData.data[0];
-      const twitchId = streamerProfile.id;
-      const username = streamerProfile.login;
-      const displayName = streamerProfile.display_name;
-
-      // 3. Insertar o actualizar los datos en tu tabla utilizando Drizzle
-      await db.insert(schema.streamersTable)
-        .values({
-          twitchId: twitchId,
-          username: username,
-          displayName: displayName,
-          accessToken: access_token,
-          refreshToken: refresh_token,
-        })
-        .onConflictDoUpdate({
-          target: schema.streamersTable.twitchId,
-          set: {
-            username: username,
-            displayName: displayName,
-            accessToken: access_token,
-            refreshToken: refresh_token,
-            updatedAt: new Date()
-          }
-        });
-
-      // 4. Respuesta visual para el Panel de Control
-      res.send(`
-        <div style="font-family: sans-serif; text-align: center; margin-top: 60px;">
-          <h1 style="color: #9146FF; font-size: 2.5em; margin-bottom: 10px;">¡Panel de Control Vinculado!</h1>
-          <p style="font-size: 1.2em; color: #333;">Bienvenido, <strong>${displayName}</strong>.</p>
-          <p style="color: #666;">Tu sesión de Twitch se configuró correctamente en la base de datos.</p>
-          <p style="margin-top: 30px;"><small>Ya puedes cerrar esta pestaña de forma segura.</small></p>
-        </div>
-      `);
-
-    } catch (error: any) {
-      console.error("Error en la autenticación:", error);
-      res.status(500).send(`Hubo un error interno al intentar guardar tu sesión de Twitch: ${error.message}`);
-    }
-  } else {
-    res.send("El Backend del Panel de Control está corriendo de forma segura en Render.");
-  }
+// Mantener la raíz como una comprobación sencilla del servicio. El único flujo
+// OAuth válido está definido en `routes/auth.ts` bajo `/api/auth/*`.
+app.get("/", (_req, res) => {
+  res.json({ ok: true, service: "botmod-panel-api" });
 });
-// === FIN DE LA INTEGRACIÓN DE TWITCH Y DRIZZLE ===
-
 
 export default app;
 

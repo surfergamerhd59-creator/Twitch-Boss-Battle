@@ -50,8 +50,14 @@ const AuthContext = createContext<AuthContextValue>({
   clearWorkspace: async () => {},
 });
 
-const AUTH_KEY      = "@twitch_auth";
+const AUTH_KEY = "@twitch_auth";
 const WORKSPACE_KEY = "@twitch_workspace";
+
+// This produces `mobile://auth` in a development/production build because the
+// scheme is declared in app.json. Expo Go uses its own exp:// URL instead.
+const AUTH_REDIRECT_URL = Linking.createURL("auth", {
+  scheme: "mobile",
+});
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<TwitchUser | null>(null);
@@ -66,55 +72,82 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ])
       .then(([rawUser, rawWs]) => {
         if (rawUser) setUser(JSON.parse(rawUser) as TwitchUser);
-        if (rawWs)   setActiveWorkspace(JSON.parse(rawWs) as Workspace);
+        if (rawWs) setActiveWorkspace(JSON.parse(rawWs) as Workspace);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
 
-  // ── Deep-link listener (handles mobile://auth?token=...&username=...) ──────
-  useEffect(() => {
-    const handler = (event: { url: string }) => {
-      const parsed = Linking.parse(event.url);
-      if (parsed.path === "auth" || parsed.path === "--/auth") {
-        const token       = parsed.queryParams?.["token"]       as string | undefined;
-        const username    = parsed.queryParams?.["username"]    as string | undefined;
-        const displayName = parsed.queryParams?.["displayName"] as string | undefined;
-        const twitchId    = parsed.queryParams?.["twitchId"]    as string | undefined;
-        if (token && username && displayName && twitchId) {
-          void setToken(token, username, displayName, twitchId);
-        }
-      }
-    };
-
-    const sub = Linking.addEventListener("url", handler);
-    Linking.getInitialURL().then((url) => { if (url) handler({ url }); });
-    return () => sub.remove();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // ── Actions ───────────────────────────────────────────────────────────────
-
+  // ── Persist a completed Twitch session ────────────────────────────────────
   const setToken = useCallback(
     async (token: string, username: string, displayName: string, twitchId: string) => {
       const u: TwitchUser = { token, username, displayName, twitchId };
       setUser(u);
-      // Clear workspace on new login so the workspace selector shows
       setActiveWorkspace(null);
       await AsyncStorage.multiSet([
         [AUTH_KEY, JSON.stringify(u)],
         [WORKSPACE_KEY, ""],
       ]);
     },
-    []
+    [],
   );
 
-  const login = useCallback(async () => {
-    const url = `${API_BASE}/auth/twitch`;
-    await WebBrowser.openBrowserAsync(url, {
-      presentationStyle: WebBrowser.WebBrowserPresentationStyle.FORM_SHEET,
+  // ── Parse and consume a deep-link callback ─────────────────────────────────
+  const handleAuthUrl = useCallback(
+    (url: string) => {
+      const parsed = Linking.parse(url);
+      // `mobile://auth?...` parses `auth` as hostname, while
+      // `mobile:///auth?...` and Expo Go's `.../--/auth` parse it as path.
+      const isAuthCallback =
+        parsed.hostname === "auth" ||
+        parsed.path === "auth" ||
+        parsed.path === "--/auth";
+
+      if (!isAuthCallback) return;
+
+      const getQueryValue = (key: string): string | undefined => {
+        const value = parsed.queryParams?.[key];
+        return Array.isArray(value) ? value[0] : value;
+      };
+
+      const token = getQueryValue("token");
+      const username = getQueryValue("username");
+      const displayName = getQueryValue("displayName");
+      const twitchId = getQueryValue("twitchId");
+
+      if (token && username && displayName && twitchId) {
+        void setToken(token, username, displayName, twitchId);
+      }
+    },
+    [setToken],
+  );
+
+  // ── Deep-link listener (app already open or launched by the callback) ─────
+  useEffect(() => {
+    const subscription = Linking.addEventListener("url", ({ url }) => {
+      handleAuthUrl(url);
     });
-  }, []);
+
+    void Linking.getInitialURL().then((url) => {
+      if (url) handleAuthUrl(url);
+    });
+
+    return () => subscription.remove();
+  }, [handleAuthUrl]);
+
+  // ── Actions ───────────────────────────────────────────────────────────────
+  const login = useCallback(async () => {
+    const result = await WebBrowser.openAuthSessionAsync(
+      `${API_BASE}/auth/twitch`,
+      AUTH_REDIRECT_URL,
+    );
+
+    // On some Android versions the URL event arrives separately; handling the
+    // returned URL as well makes both foreground and cold-start flows reliable.
+    if (result.type === "success") {
+      handleAuthUrl(result.url);
+    }
+  }, [handleAuthUrl]);
 
   const logout = useCallback(async () => {
     setUser(null);
@@ -133,7 +166,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, loading, activeWorkspace, login, logout, setToken, setWorkspace, clearWorkspace }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        activeWorkspace,
+        login,
+        logout,
+        setToken,
+        setWorkspace,
+        clearWorkspace,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
