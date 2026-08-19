@@ -321,8 +321,135 @@ export async function sendAnnouncement(
   }
 }
 
-// ── Create clip ───────────────────────────────────────────────────────────────
+// ── Predictions ────────────────────────────────────────────────────────────────
 
+export type PredictionStatus = "ACTIVE" | "LOCKED" | "RESOLVED" | "CANCELED";
+
+export interface PredictionOutcome {
+  id: string;
+  title: string;
+  users: number;
+  channelPoints: number;
+  color: "BLUE" | "PINK";
+}
+
+export interface Prediction {
+  id: string;
+  title: string;
+  status: PredictionStatus;
+  predictionWindow: number;
+  createdAt: string;
+  lockedAt: string | null;
+  endedAt: string | null;
+  winningOutcomeId: string | null;
+  outcomes: PredictionOutcome[];
+}
+
+type TwitchPrediction = {
+  id: string;
+  title: string;
+  status: PredictionStatus;
+  prediction_window: number;
+  created_at: string;
+  locked_at: string | null;
+  ended_at: string | null;
+  winning_outcome_id: string | null;
+  outcomes: Array<{
+    id: string;
+    title: string;
+    users: number;
+    channel_points: number;
+    color: "BLUE" | "PINK";
+  }>;
+};
+
+function mapPrediction(prediction: TwitchPrediction): Prediction {
+  return {
+    id: prediction.id,
+    title: prediction.title,
+    status: prediction.status,
+    predictionWindow: prediction.prediction_window,
+    createdAt: prediction.created_at,
+    lockedAt: prediction.locked_at,
+    endedAt: prediction.ended_at,
+    winningOutcomeId: prediction.winning_outcome_id,
+    outcomes: prediction.outcomes.map((outcome) => ({
+      id: outcome.id,
+      title: outcome.title,
+      users: outcome.users,
+      channelPoints: outcome.channel_points,
+      color: outcome.color,
+    })),
+  };
+}
+
+export async function getPredictions(streamer: Streamer): Promise<Prediction[]> {
+  const params = new URLSearchParams({ broadcaster_id: streamer.twitchId, first: "20" });
+  const res = await helixRequest(streamer, `/predictions?${params.toString()}`);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Failed to get predictions: ${res.status} ${body}`);
+  }
+  const data = await res.json() as { data: TwitchPrediction[] };
+  return data.data.map(mapPrediction);
+}
+
+export async function createPrediction(
+  streamer: Streamer,
+  title: string,
+  outcomes: string[],
+  predictionWindow: number,
+): Promise<Prediction> {
+  if (outcomes.length < 2 || outcomes.length > 10) {
+    throw new Error("A prediction must have between 2 and 10 outcomes");
+  }
+  const res = await helixRequest(streamer, "/predictions", {
+    method: "POST",
+    body: JSON.stringify({
+      broadcaster_id: streamer.twitchId,
+      title,
+      outcomes: outcomes.map((outcome) => ({ title: outcome })),
+      prediction_window: predictionWindow,
+    }),
+  });
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Failed to create prediction: ${res.status} ${body}`);
+  }
+  const data = await res.json() as { data: TwitchPrediction[] };
+  const prediction = data.data[0];
+  if (!prediction) throw new Error("Prediction creation returned no data");
+  return mapPrediction(prediction);
+}
+
+export async function updatePrediction(
+  streamer: Streamer,
+  predictionId: string,
+  status: Exclude<PredictionStatus, "ACTIVE">,
+  winningOutcomeId?: string,
+): Promise<Prediction> {
+  const body: Record<string, unknown> = {
+    broadcaster_id: streamer.twitchId,
+    id: predictionId,
+    status,
+  };
+  if (winningOutcomeId) body["winning_outcome_id"] = winningOutcomeId;
+
+  const res = await helixRequest(streamer, "/predictions", {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const responseBody = await res.text();
+    throw new Error(`Failed to update prediction: ${res.status} ${responseBody}`);
+  }
+  const data = await res.json() as { data: TwitchPrediction[] };
+  const prediction = data.data[0];
+  if (!prediction) throw new Error("Prediction update returned no data");
+  return mapPrediction(prediction);
+}
+
+// ── Create clip ───────────────────────────────────────────────────────────────
 export async function createClip(streamer: Streamer): Promise<{ id: string; editUrl: string }> {
   const res = await helixRequest(
     streamer,

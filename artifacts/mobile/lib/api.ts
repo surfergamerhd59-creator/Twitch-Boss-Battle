@@ -248,8 +248,85 @@ export async function postAnnouncement(
   }
 }
 
-// ── Chat settings (Emote-only / Followers-only) & Clear Chat ─────────────────
+export type PredictionStatus = "ACTIVE" | "LOCKED" | "RESOLVED" | "CANCELED";
 
+export interface PredictionOutcome {
+  id: string;
+  title: string;
+  users: number;
+  channelPoints: number;
+  color: "BLUE" | "PINK";
+}
+
+export interface Prediction {
+  id: string;
+  title: string;
+  status: PredictionStatus;
+  predictionWindow: number;
+  createdAt: string;
+  lockedAt: string | null;
+  endedAt: string | null;
+  winningOutcomeId: string | null;
+  outcomes: PredictionOutcome[];
+}
+
+export async function getPredictions(username: string, token: string): Promise<Prediction[]> {
+  const res = await fetch(`${API_BASE}/stream/${encodeURIComponent(username)}/predictions`, {
+    headers: authHeaders(token),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error ?? `Server error ${res.status}`);
+  }
+  return res.json() as Promise<Prediction[]>;
+}
+
+export async function createPrediction(
+  username: string,
+  title: string,
+  outcomes: string[],
+  predictionWindow: number,
+  token: string,
+): Promise<Prediction> {
+  const res = await fetch(`${API_BASE}/stream/${encodeURIComponent(username)}/predictions`, {
+    method: "POST",
+    headers: authHeaders(token),
+    body: JSON.stringify({ title, outcomes, predictionWindow }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error ?? `Server error ${res.status}`);
+  }
+  return res.json() as Promise<Prediction>;
+}
+
+export async function updatePrediction(
+  username: string,
+  predictionId: string,
+  status: Exclude<PredictionStatus, "ACTIVE">,
+  token: string,
+  winningOutcomeId?: string,
+): Promise<Prediction> {
+  const res = await fetch(
+    `${API_BASE}/stream/${encodeURIComponent(username)}/predictions/${encodeURIComponent(predictionId)}`,
+    {
+      method: "PATCH",
+      headers: authHeaders(token),
+      body: JSON.stringify({ status, winningOutcomeId }),
+    },
+  );
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({})) as { error?: string };
+    throw new Error(err.error ?? `Server error ${res.status}`);
+  }
+  return res.json() as Promise<Prediction>;
+}
+
+export function getStreamPlayerUrl(username: string): string {
+  return `${API_BASE}/stream/${encodeURIComponent(username)}/player`;
+}
+
+// ── Chat settings (Emote-only / Followers-only) & Clear Chat ─────────────────
 export interface ChatSettings {
   emoteMode: boolean;
   followerMode: boolean;

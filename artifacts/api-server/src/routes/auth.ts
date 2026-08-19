@@ -19,6 +19,7 @@ const SCOPES = [
   "chat:edit",
   "channel:manage:broadcast",
   "moderator:manage:announcements",
+  "channel:manage:predictions",
   "user:read:email",
 ].join(" ");
 

@@ -10,6 +10,8 @@ export type ActivityActionType =
   | "chat_mode_change"
   | "clear_chat"
   | "announcement"
+  | "prediction_created"
+  | "prediction_updated"
   | "clip_created"
   | "sound_trigger";
 

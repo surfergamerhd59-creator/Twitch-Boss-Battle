@@ -9,7 +9,11 @@ import {
   updateStreamCategory,
   searchCategories,
   sendAnnouncement,
+  getPredictions,
+  createPrediction,
+  updatePrediction,
   createClip,
+  type PredictionStatus,
   getChatSettings,
   updateChatSettings,
   clearChat,
@@ -167,6 +171,117 @@ router.post("/stream/:username/announcement", requireAuth, async (req: Request, 
     const msg = err instanceof Error ? err.message : "Failed";
     res.status(500).json({ error: msg });
   }
+});
+
+// ── Predictions ────────────────────────────────────────────────────────────────
+router.get("/stream/:username/predictions", requireAuth, async (req: Request, res: Response) => {
+  const { username } = req.params as { username: string };
+  const canAccess = await canAccessChannel(username, req.twitchUser!);
+  if (!canAccess) { res.status(403).json({ error: "Access denied" }); return; }
+
+  const streamer = await getStreamer(username);
+  if (!streamer) { res.status(404).json({ error: "Streamer not found" }); return; }
+
+  try {
+    res.json(await getPredictions(streamer));
+  } catch (err: unknown) {
+    req.log.error({ err }, "Failed to get predictions");
+    const msg = err instanceof Error ? err.message : "Failed to get predictions";
+    res.status(500).json({ error: msg });
+  }
+});
+
+router.post("/stream/:username/predictions", requireAuth, async (req: Request, res: Response) => {
+  const { username } = req.params as { username: string };
+  const { title, outcomes, predictionWindow } = req.body as {
+    title?: string;
+    outcomes?: string[];
+    predictionWindow?: number;
+  };
+  const canAccess = await canAccessChannel(username, req.twitchUser!);
+  if (!canAccess) { res.status(403).json({ error: "Access denied" }); return; }
+  if (!title?.trim() || title.trim().length > 45) {
+    res.status(400).json({ error: "title is required and must be at most 45 characters" });
+    return;
+  }
+  if (!Array.isArray(outcomes) || outcomes.length < 2 || outcomes.length > 10) {
+    res.status(400).json({ error: "Provide between 2 and 10 outcomes" });
+    return;
+  }
+  const cleanOutcomes = outcomes.map((outcome) => outcome.trim());
+  if (cleanOutcomes.some((outcome) => !outcome || outcome.length > 25)) {
+    res.status(400).json({ error: "Each outcome must be between 1 and 25 characters" });
+    return;
+  }
+  const windowSeconds = Number(predictionWindow ?? 300);
+  if (!Number.isInteger(windowSeconds) || windowSeconds < 30 || windowSeconds > 1800) {
+    res.status(400).json({ error: "predictionWindow must be an integer between 30 and 1800 seconds" });
+    return;
+  }
+
+  const streamer = await getStreamer(username);
+  if (!streamer) { res.status(404).json({ error: "Streamer not found" }); return; }
+
+  try {
+    const prediction = await createPrediction(streamer, title.trim(), cleanOutcomes, windowSeconds);
+    await logActivity(username, "prediction_created", `Prediction: ${title.trim()}`, req.twitchUser!.username);
+    res.json(prediction);
+  } catch (err: unknown) {
+    req.log.error({ err }, "Failed to create prediction");
+    const msg = err instanceof Error ? err.message : "Failed to create prediction";
+    res.status(500).json({ error: msg });
+  }
+});
+
+router.patch("/stream/:username/predictions/:predictionId", requireAuth, async (req: Request, res: Response) => {
+  const { username, predictionId } = req.params as { username: string; predictionId: string };
+  const { status, winningOutcomeId } = req.body as {
+    status?: Exclude<PredictionStatus, "ACTIVE">;
+    winningOutcomeId?: string;
+  };
+  const canAccess = await canAccessChannel(username, req.twitchUser!);
+  if (!canAccess) { res.status(403).json({ error: "Access denied" }); return; }
+  if (!status || !["LOCKED", "RESOLVED", "CANCELED"].includes(status)) {
+    res.status(400).json({ error: "status must be LOCKED, RESOLVED, or CANCELED" });
+    return;
+  }
+  if (status === "RESOLVED" && !winningOutcomeId) {
+    res.status(400).json({ error: "winningOutcomeId is required to resolve a prediction" });
+    return;
+  }
+
+  const streamer = await getStreamer(username);
+  if (!streamer) { res.status(404).json({ error: "Streamer not found" }); return; }
+
+  try {
+    const prediction = await updatePrediction(streamer, predictionId, status, winningOutcomeId);
+    await logActivity(username, "prediction_updated", `Prediction ${status.toLowerCase()}`, req.twitchUser!.username);
+    res.json(prediction);
+  } catch (err: unknown) {
+    req.log.error({ err }, "Failed to update prediction");
+    const msg = err instanceof Error ? err.message : "Failed to update prediction";
+    res.status(500).json({ error: msg });
+  }
+});
+
+// ── Stream player ─────────────────────────────────────────────────────────────
+router.get("/stream/:username/player", (req: Request, res: Response) => {
+  const { username } = req.params as { username: string };
+  const parent = (req.get("host") ?? "botmodpanel.onrender.com").split(":")[0];
+  const safeUsername = encodeURIComponent(username);
+  const safeParent = encodeURIComponent(parent);
+  res.type("html").send(`<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Twitch stream</title>
+<style>html,body{margin:0;background:#0e0e10;min-height:100%;overflow:hidden}iframe{border:0;width:100vw;height:100vh;min-height:300px}</style>
+</head>
+<body>
+<iframe src="https://player.twitch.tv/?channel=${safeUsername}&parent=${safeParent}&autoplay=false&muted=false" allowfullscreen></iframe>
+</body>
+</html>`);
 });
 
 // ── Create clip ───────────────────────────────────────────────────────────────
